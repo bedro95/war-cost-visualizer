@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import { createCanvas } from "canvas";
 import { writeFileSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -7,73 +7,109 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "..", "public");
 mkdirSync(outDir, { recursive: true });
 
-const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <!-- White background -->
-  <rect width="1200" height="630" fill="#FFFFFF"/>
+const W = 1200, H = 630;
+const canvas = createCanvas(W, H);
+const ctx = canvas.getContext("2d");
 
-  <!-- Dot grid -->
-  <defs>
-    <pattern id="dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-      <circle cx="1" cy="1" r="1.2" fill="#CBD5E1" opacity="0.45"/>
-    </pattern>
-  </defs>
-  <rect width="1200" height="630" fill="url(#dots)"/>
+// White background
+ctx.fillStyle = "#FFFFFF";
+ctx.fillRect(0, 0, W, H);
 
-  <!-- Red accent bar top -->
-  <rect x="0" y="0" width="1200" height="6" fill="#DC2626"/>
+// Subtle dot grid
+ctx.fillStyle = "rgba(203, 213, 225, 0.45)";
+for (let x = 16; x < W; x += 32) {
+  for (let y = 16; y < H; y += 32) {
+    ctx.beginPath();
+    ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
-  <!-- Red accent line above label -->
-  <rect x="576" y="112" width="48" height="4" rx="2" fill="#DC2626"/>
+// Red accent bar at top
+ctx.fillStyle = "#DC2626";
+ctx.beginPath();
+ctx.roundRect(0, 0, W, 6, 0);
+ctx.fill();
 
-  <!-- INTERACTIVE DATA REPORT label -->
-  <text x="600" y="152"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="13" font-weight="700" fill="#94A3B8"
-    text-anchor="middle" letter-spacing="5">INTERACTIVE DATA REPORT</text>
+// Small red line above label
+ctx.fillStyle = "#DC2626";
+ctx.beginPath();
+ctx.roundRect(576, 112, 48, 4, 2);
+ctx.fill();
 
-  <!-- Title line 1 -->
-  <text x="600" y="245"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="66" font-weight="700" fill="#0F172A"
-    text-anchor="middle">What If War Money</text>
+// "INTERACTIVE DATA REPORT" label
+ctx.fillStyle = "#94A3B8";
+ctx.font = "bold 13px Arial, sans-serif";
+ctx.textAlign = "center";
+ctx.letterSpacing = "5px";
+ctx.fillText("INTERACTIVE DATA REPORT", W / 2, 152);
+ctx.letterSpacing = "0px";
 
-  <!-- Title line 2 (Was Spent On Life?) -->
-  <text x="600" y="328"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="66" font-weight="700" fill="#0F172A"
-    text-anchor="middle">
-    <tspan>Was Spent On </tspan><tspan fill="#DC2626" font-style="italic">Life</tspan><tspan>?</tspan>
-  </text>
+// Title line 1
+ctx.fillStyle = "#0F172A";
+ctx.font = "bold 64px Georgia, serif";
+ctx.textAlign = "center";
+ctx.fillText("What If War Money", W / 2, 248);
 
-  <!-- Subtitle -->
-  <text x="600" y="388"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="20" fill="#94A3B8"
-    text-anchor="middle">Interactive Data Visualization · SIPRI 2024</text>
+// Title line 2 — "Was Spent On " + "Life" (red) + "?"
+ctx.font = "bold 64px Georgia, serif";
+const line2parts = [
+  { text: "Was Spent On ", color: "#0F172A", italic: false },
+  { text: "Life",          color: "#DC2626", italic: true  },
+  { text: "?",             color: "#0F172A", italic: false },
+];
+// Measure total width to center manually
+const measures = line2parts.map(p => {
+  ctx.font = p.italic ? "italic bold 64px Georgia, serif" : "bold 64px Georgia, serif";
+  return ctx.measureText(p.text).width;
+});
+const totalWidth = measures.reduce((a, b) => a + b, 0);
+let cx = W / 2 - totalWidth / 2;
+line2parts.forEach((p, i) => {
+  ctx.font = p.italic ? "italic bold 64px Georgia, serif" : "bold 64px Georgia, serif";
+  ctx.fillStyle = p.color;
+  ctx.textAlign = "left";
+  ctx.fillText(p.text, cx, 332);
+  cx += measures[i];
+});
 
-  <!-- Budget card -->
-  <rect x="320" y="415" width="560" height="96" rx="14"
-    fill="#FAFBFC" stroke="#E2E8F0" stroke-width="1.5"/>
-  <text x="600" y="448"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="11" font-weight="700" fill="#94A3B8"
-    text-anchor="middle" letter-spacing="4">COMBINED MILITARY SPENDING</text>
-  <text x="600" y="492"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="44" font-weight="700" fill="#DC2626"
-    text-anchor="middle" letter-spacing="-1">$1.6 trillion / year</text>
+// Subtitle
+ctx.fillStyle = "#94A3B8";
+ctx.font = "20px Arial, sans-serif";
+ctx.textAlign = "center";
+ctx.fillText("$1.56T in military spending — what else could it build?", W / 2, 392);
 
-  <!-- Bottom credit -->
-  <text x="600" y="592"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="14" fill="#CBD5E1"
-    text-anchor="middle">by @itsabader</text>
-</svg>`;
+// Budget card background
+const cardX = 300, cardY = 418, cardW = 600, cardH = 100, cardR = 14;
+ctx.fillStyle = "#FAFBFC";
+ctx.strokeStyle = "#E2E8F0";
+ctx.lineWidth = 1.5;
+ctx.beginPath();
+ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+ctx.fill();
+ctx.stroke();
 
+// Card label
+ctx.fillStyle = "#94A3B8";
+ctx.font = "bold 11px Arial, sans-serif";
+ctx.textAlign = "center";
+ctx.letterSpacing = "4px";
+ctx.fillText("COMBINED MILITARY SPENDING", W / 2, cardY + 34);
+ctx.letterSpacing = "0px";
+
+// Card value
+ctx.fillStyle = "#DC2626";
+ctx.font = "bold 42px Georgia, serif";
+ctx.textAlign = "center";
+ctx.fillText("$1.6 trillion / year", W / 2, cardY + 78);
+
+// Footer
+ctx.fillStyle = "#CBD5E1";
+ctx.font = "14px Arial, sans-serif";
+ctx.textAlign = "center";
+ctx.fillText("SIPRI 2024  ·  @itsabader", W / 2, 596);
+
+// Save
 const outputPath = join(outDir, "og-image.png");
-
-await sharp(Buffer.from(svg))
-  .png()
-  .toFile(outputPath);
-
-console.log(`✓ OG image generated → public/og-image.png`);
+writeFileSync(outputPath, canvas.toBuffer("image/png"));
+console.log("✓ OG image generated → public/og-image.png");
