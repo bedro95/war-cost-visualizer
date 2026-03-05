@@ -13,7 +13,7 @@ export const metadata = {
     siteName: "War Costs Visualizer",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://war-costs-visualizer.vercel.app/og-image.png",
         width: 1200,
         height: 630,
         alt: "What If War Money Was Spent On Life?",
@@ -26,7 +26,7 @@ export const metadata = {
     title: "What If War Money Was Spent On Life?",
     description: "$1.56T in military spending could build 88,600 schools yearly. See the data.",
     creator: "@itsabader",
-    images: ["/og-image.png"],
+    images: ["https://war-costs-visualizer.vercel.app/og-image.png"],
   },
 };
 
