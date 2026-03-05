@@ -55,8 +55,11 @@ const AmbientMusic = () => {
   const [playing, setPlaying] = useState(false);
   const ctxRef = useRef(null);
   const nodesRef = useRef([]);
+  const startedRef = useRef(false);
 
   const start = () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     ctxRef.current = ctx;
     // A minor ambient drone: A2 · C3 · E3 · A3
@@ -104,8 +107,20 @@ const AmbientMusic = () => {
       nodesRef.current = [];
       setTimeout(() => { ctx.close(); ctxRef.current = null; }, 2000);
     }
+    startedRef.current = false;
     setPlaying(false);
   };
+
+  // Auto-start on first user interaction
+  useEffect(() => {
+    const events = ["scroll", "touchstart", "mousemove", "keydown", "pointerdown"];
+    const onFirstInteraction = () => {
+      start();
+      events.forEach(e => window.removeEventListener(e, onFirstInteraction));
+    };
+    events.forEach(e => window.addEventListener(e, onFirstInteraction, { passive: true }));
+    return () => events.forEach(e => window.removeEventListener(e, onFirstInteraction));
+  }, []);
 
   useEffect(() => () => { if (ctxRef.current) stop(); }, []);
 
