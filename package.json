@@ -4,7 +4,8 @@
   "description": "What If War Money Was Spent On Life?",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "generate-og": "node scripts/generate-og.mjs",
+    "build": "node scripts/generate-og.mjs && next build",
     "start": "next start"
   },
   "repository": {
@@ -17,5 +18,8 @@
     "next": "14.2.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }
