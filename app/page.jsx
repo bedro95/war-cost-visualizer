@@ -29,7 +29,7 @@ function fmt(n) {
   return n.toFixed(0);
 }
 
-const AnimNum = ({ target, duration = 1800 }) => {
+const AnimNum = ({ target, duration = 1800, formatter = fmt }) => {
   const [val, setVal] = useState(0);
   const ref = useRef(null);
   const ran = useRef(false);
@@ -48,7 +48,83 @@ const AnimNum = ({ target, duration = 1800 }) => {
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, [target, duration]);
-  return <span ref={ref}>{fmt(val)}</span>;
+  return <span ref={ref}>{formatter(val)}</span>;
+};
+
+const AmbientMusic = () => {
+  const [playing, setPlaying] = useState(false);
+  const ctxRef = useRef(null);
+  const nodesRef = useRef([]);
+
+  const start = () => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctxRef.current = ctx;
+    // A minor ambient drone: A2 · C3 · E3 · A3
+    const freqs = [110, 130.81, 164.81, 220];
+    freqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = i % 2 === 0 ? "sine" : "triangle";
+      osc.frequency.value = freq;
+      filter.type = "lowpass";
+      filter.frequency.value = 600;
+      lfo.frequency.value = 0.18 + i * 0.05;
+      lfo.type = "sine";
+      lfoGain.gain.value = 2;
+
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      const vol = 0.045 / (i + 1);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 3 + i * 0.5);
+
+      osc.start();
+      lfo.start();
+      nodesRef.current.push({ osc, lfo, gain });
+    });
+    setPlaying(true);
+  };
+
+  const stop = () => {
+    const ctx = ctxRef.current;
+    if (ctx) {
+      nodesRef.current.forEach(({ osc, lfo, gain }) => {
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
+        osc.stop(ctx.currentTime + 1.6);
+        lfo.stop(ctx.currentTime + 1.6);
+      });
+      nodesRef.current = [];
+      setTimeout(() => { ctx.close(); ctxRef.current = null; }, 2000);
+    }
+    setPlaying(false);
+  };
+
+  useEffect(() => () => { if (ctxRef.current) stop(); }, []);
+
+  return (
+    <button
+      onClick={() => playing ? stop() : start()}
+      title={playing ? "Mute ambient sound" : "Play ambient sound"}
+      style={{
+        position: "fixed", bottom: "24px", right: "24px", zIndex: 999,
+        width: "44px", height: "44px", borderRadius: "50%", border: "1.5px solid #E2E8F0",
+        background: playing ? "#0F172A" : "#FFF", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: "18px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+        transition: "all .25s",
+      }}
+    >
+      {playing ? "🔊" : "🔇"}
+    </button>
+  );
 };
 
 const Bar = ({ pct, color, delay = 0 }) => {
@@ -87,6 +163,7 @@ export default function WarCostViz() {
   return (
     <div style={{ minHeight: "100vh", background: "#FFFFFF", fontFamily: "'Source Sans 3', sans-serif", color: "#1E293B" }}>
       <style>{css}</style>
+      <AmbientMusic />
 
       <header style={{ position: "relative", padding: "52px 24px 36px", textAlign: "center", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, opacity: 0.025, pointerEvents: "none",
@@ -116,7 +193,7 @@ export default function WarCostViz() {
           padding: "18px 36px", borderRadius: "14px", background: "#FAFBFC", border: "1px solid #F1F5F9",
         }}>
           <div style={{ fontSize: "10px", letterSpacing: "3px", textTransform: "uppercase", color: "#94A3B8", marginBottom: "4px", fontWeight: 700 }}>COMBINED MILITARY SPENDING</div>
-          <div style={{ fontSize: "clamp(34px, 5vw, 50px)", fontWeight: 800, color: "#DC2626", letterSpacing: "-2px" }}>$<AnimNum target={totalB} />B</div>
+          <div style={{ fontSize: "clamp(34px, 5vw, 50px)", fontWeight: 800, color: "#DC2626", letterSpacing: "-2px" }}>$<AnimNum target={totalB / 1000} formatter={n => n.toFixed(1)} /> trillion</div>
           <div style={{ fontSize: "12px", color: "#CBD5E1" }}>per year · {COUNTRIES.length} nations</div>
         </div>
       </header>
